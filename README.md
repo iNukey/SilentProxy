@@ -48,3 +48,14 @@ Install all Python requirements with:
 
 ```bash
 pip install -r requirements.txt
+```
+
+---
+
+## ⚠️ Disclaimer
+
+> This project is for **educational and ethical penetration testing** purposes only.  
+> Do **not** use SilentProxy on networks, systems, or devices you do not **own or have explicit permission** to test.  
+> Unauthorized use of this tool may be illegal and is strictly discouraged.
+
+---
