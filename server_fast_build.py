@@ -374,9 +374,42 @@ class TkLogHandler(logging.Handler):
 class GUI:
     ICON_PATH = ROOT_DIR / "proxy_icon.png"
 
+    # ---------- dark-theme palette ------------------------------------------
+    BG_MAIN   = "#000000"
+    BG_FIELD  = "#18181B"
+    FG_TEXT   = "#258818"
+    ACCENT    = "#258818"
+    ACCENT_HL = "#258818"
+    FG_MUTED  = "#666666"
+
     def __init__(self) -> None:
         self.root = tk.Tk()
         self.root.title("MITM Proxy")
+        self.root.configure(bg=self.BG_MAIN)
+        self.root.minsize(900, 600)
+
+        # allow the single column to stretch so content centres nicely
+        self.root.columnconfigure(0, weight=1)
+
+        # ------------- ttk styling -----------------------------------------
+        style = ttk.Style(self.root)
+        style.theme_use("clam")
+        style.configure(".", background=self.BG_MAIN, foreground=self.FG_TEXT)
+        style.configure("TFrame",   background=self.BG_MAIN)
+        style.configure("TLabel",   background=self.BG_MAIN, foreground=self.FG_TEXT)
+        style.configure("TCheckbutton", background=self.BG_MAIN, foreground=self.FG_TEXT)
+        style.configure("TEntry",
+                        foreground=self.FG_TEXT,
+                        fieldbackground=self.BG_FIELD,
+                        insertcolor=self.FG_TEXT,
+                        borderwidth=1, relief="flat")
+        style.configure("TButton",
+                        background=self.ACCENT,
+                        foreground="#000000",
+                        borderwidth=0, padding=(8, 4))
+        style.map("TButton",
+                  background=[("active", self.ACCENT_HL), ("disabled", self.FG_MUTED)],
+                  foreground=[("disabled", self.FG_MUTED)])
 
         if self.ICON_PATH.exists():
             try:
@@ -385,119 +418,129 @@ class GUI:
             except Exception:
                 pass
 
-        # Top frame for listener and build controls
-        top_frame = ttk.Frame(self.root, padding=10)
-        top_frame.grid(row=0, column=0, sticky="ew")
-        top_frame.columnconfigure(6, weight=1)
+        # ---------------- top controls -------------------------------------
+        top = ttk.Frame(self.root, padding=10)
+        top.grid(row=0, column=0, sticky="ew")
 
-        # Proxy listener controls
-        ttk.Label(top_frame, text="Proxy Host").grid(row=0, column=0, padx=5)
-        self.entry_host = ttk.Entry(top_frame, width=15)
+        # make all eight columns share space so block stays centred
+        for i in range(8):
+            top.columnconfigure(i, weight=1, uniform="a")
+
+        # proxy listener
+        ttk.Label(top, text="Proxy Host").grid(row=0, column=0, padx=5)
+        self.entry_host = ttk.Entry(top, width=15)
         self.entry_host.insert(0, HOST)
         self.entry_host.grid(row=0, column=1, padx=5)
 
-        ttk.Label(top_frame, text="Proxy Port").grid(row=0, column=2, padx=5)
-        self.entry_port = ttk.Entry(top_frame, width=6)
+        ttk.Label(top, text="Proxy Port").grid(row=0, column=2, padx=5)
+        self.entry_port = ttk.Entry(top, width=6)
         self.entry_port.insert(0, str(PORT))
         self.entry_port.grid(row=0, column=3, padx=5)
 
-        self.button_start = ttk.Button(top_frame, text="Start", command=self.start)
+        self.button_start = ttk.Button(top, text="Start", command=self.start)
         self.button_start.grid(row=0, column=4, padx=5)
 
-        self.button_stop = ttk.Button(top_frame, text="Stop", command=self.stop, state=tk.DISABLED)
+        self.button_stop = ttk.Button(top, text="Stop",
+                                      command=self.stop, state=tk.DISABLED)
         self.button_stop.grid(row=0, column=5, padx=5)
 
-        # Client build controls
-        ttk.Label(top_frame, text="Client Host").grid(row=1, column=0, padx=5, pady=(10,0))
-        self.entry_che = ttk.Entry(top_frame, width=15)
+        # client-build
+        ttk.Label(top, text="Client Host").grid(row=1, column=0, padx=5, pady=(10, 0))
+        self.entry_che = ttk.Entry(top, width=15)
         self.entry_che.insert(0, HOST)
-        self.entry_che.grid(row=1, column=1, padx=5, pady=(10,0))
+        self.entry_che.grid(row=1, column=1, padx=5, pady=(10, 0))
 
-        ttk.Label(top_frame, text="Client Port").grid(row=1, column=2, padx=5, pady=(10,0))
-        self.entry_cpe = ttk.Entry(top_frame, width=6)
+        ttk.Label(top, text="Client Port").grid(row=1, column=2, padx=5, pady=(10, 0))
+        self.entry_cpe = ttk.Entry(top, width=6)
         self.entry_cpe.insert(0, str(PORT))
-        self.entry_cpe.grid(row=1, column=3, padx=5, pady=(10,0))
+        self.entry_cpe.grid(row=1, column=3, padx=5, pady=(10, 0))
 
-        self.button_build = ttk.Button(top_frame, text="Build Client", command=self.build_client)
-        self.button_build.grid(row=1, column=4, padx=5, pady=(10,0))
+        self.button_build = ttk.Button(top, text="Build Client",
+                                       command=self.build_client)
+        self.button_build.grid(row=1, column=4, padx=5, pady=(10, 0))
 
         self.selfdel_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            top_frame,
-            text="Self-deletion",
-            variable=self.selfdel_var
-        ).grid(row=1, column=6, padx=5, pady=(10, 0))
+        ttk.Checkbutton(top, text="Self-deletion",
+                        variable=self.selfdel_var
+                        ).grid(row=1, column=6, padx=5, pady=(10, 0))
 
         self.fakedll_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            top_frame,
-            text="Fake DLL pop-up",
-            variable=self.fakedll_var
-        ).grid(row=1, column=7, padx=5, pady=(10, 0))
+        ttk.Checkbutton(top, text="Fake DLL pop-up",
+                        variable=self.fakedll_var
+                        ).grid(row=1, column=7, padx=5, pady=(10, 0))
 
-        self.button_ngrok = ttk.Button(
-            top_frame,
-            text="Start ngrok tunnel",
-            command=lambda: self.start_ngrok(int(self.entry_port.get()))
-        )
-        self.button_ngrok.grid(row=1, column=5, padx=5, pady=(10,0))
+        self.button_ngrok = ttk.Button(top, text="Start ngrok tunnel",
+                                       command=lambda: self.start_ngrok(
+                                           int(self.entry_port.get())))
+        self.button_ngrok.grid(row=1, column=5, padx=5, pady=(10, 0))
 
-        # Toggles
+        # toggles
         self.ck_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(
-            top_frame,
-            text="Cookie sniffer",
-            variable=self.ck_var,
-            command=self.toggle_cookie
-        ).grid(row=2, column=0, columnspan=3, sticky="w")
+        ttk.Checkbutton(top, text="Cookie sniffer",
+                        variable=self.ck_var, command=self.toggle_cookie
+                        ).grid(row=2, column=0, columnspan=3, sticky="w")
 
         self.rd_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            top_frame,
-            text="Enable redirects",
-            variable=self.rd_var,
-            command=self.toggle_redirects
-        ).grid(row=2, column=3, columnspan=3, sticky="w")
+        ttk.Checkbutton(top, text="Enable redirects",
+                        variable=self.rd_var, command=self.toggle_redirects
+                        ).grid(row=2, column=3, columnspan=3, sticky="w")
 
-        # Redirect rule list
-        middle_frame = ttk.Frame(self.root, padding=(10,5))
-        middle_frame.grid(row=1, column=0, sticky="nsew")
+        # ---------------- redirect rule list --------------------------------
+        mid = ttk.Frame(self.root, padding=(10, 5))
+        mid.grid(row=1, column=0, sticky="nsew")
         self.root.rowconfigure(1, weight=1)
 
-        ttk.Label(middle_frame, text="Redirect rules (double-click to delete)").pack(anchor="w")
-        self.listbox_rules = tk.Listbox(middle_frame, height=6)
+        ttk.Label(mid, text="Redirect rules (double-click to delete)"
+                  ).pack(anchor="w")
+        self.listbox_rules = tk.Listbox(mid, height=6,
+                                        bg=self.BG_FIELD, fg=self.FG_TEXT,
+                                        highlightthickness=0,
+                                        selectbackground=self.ACCENT,
+                                        selectforeground=self.BG_MAIN)
         self.listbox_rules.pack(fill="both", expand=True, pady=5)
         self.listbox_rules.bind("<Double-1>", lambda e: self.delete_rule())
 
-        # Add rule inputs
-        bottom_frame = ttk.Frame(self.root, padding=10)
-        bottom_frame.grid(row=2, column=0, sticky="ew")
-        bottom_frame.columnconfigure(2, weight=1)
+        # ---------------- add-rule inputs -----------------------------------
+        bottom = ttk.Frame(self.root, padding=10)
+        bottom.grid(row=2, column=0, sticky="ew")
 
-        ttk.Label(bottom_frame, text="Host pattern").grid(row=0, column=0)
-        self.entry_hp = ttk.Entry(bottom_frame)
+        # even spacing for Host/Path/Target/Add columns
+        for i in range(4):
+            bottom.columnconfigure(i, weight=1, uniform="b")
+
+        ttk.Label(bottom, text="Host pattern").grid(row=0, column=0)
+        self.entry_hp = ttk.Entry(bottom)
         self.entry_hp.grid(row=1, column=0, padx=5)
 
-        ttk.Label(bottom_frame, text="Path pattern").grid(row=0, column=1)
-        self.entry_pp = ttk.Entry(bottom_frame)
+        ttk.Label(bottom, text="Path pattern").grid(row=0, column=1)
+        self.entry_pp = ttk.Entry(bottom)
         self.entry_pp.grid(row=1, column=1, padx=5)
 
-        ttk.Label(bottom_frame, text="Target URL").grid(row=0, column=2)
-        self.entry_tg = ttk.Entry(bottom_frame)
+        ttk.Label(bottom, text="Target URL").grid(row=0, column=2)
+        self.entry_tg = ttk.Entry(bottom)
         self.entry_tg.grid(row=1, column=2, padx=5, sticky="ew")
 
-        ttk.Button(bottom_frame, text="Add", command=self.add_rule).grid(row=1, column=3, padx=5)
+        ttk.Button(bottom, text="Add", command=self.add_rule
+                   ).grid(row=1, column=3, padx=5)
 
-        # Log area
-        ttk.Label(self.root, text="Log").grid(row=3, column=0, sticky="w", padx=10)
-        self.text_log = tk.Text(self.root, height=10, bg="#111", fg="#eee")
-        self.text_log.grid(row=4, column=0, sticky="nsew", padx=10, pady=(0,10))
+        # ---------------- log area ------------------------------------------
+        ttk.Label(self.root, text="Log").grid(row=3, column=0,
+                                              sticky="w", padx=10)
+        self.text_log = tk.Text(self.root, height=10,
+                                bg=self.BG_FIELD, fg=self.FG_TEXT,
+                                insertbackground=self.FG_TEXT,
+                                highlightthickness=0,
+                                selectbackground=self.ACCENT,
+                                selectforeground=self.BG_MAIN)
+        self.text_log.grid(row=4, column=0, sticky="nsew",
+                           padx=10, pady=(0, 10))
         self.root.rowconfigure(4, weight=1)
 
-        # Logging handler
+        # -------- logging handler to Tk text widget -------------------------
         self.log_queue = queue.Queue()
         handler = TkLogHandler(self.log_queue)
-        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s", "%H:%M:%S"))
+        handler.setFormatter(logging.Formatter(
+            "%(asctime)s %(levelname)s %(message)s", "%H:%M:%S"))
         logging.getLogger().addHandler(handler)
         self.root.after(200, self.drain_log)
 
