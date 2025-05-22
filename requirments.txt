@@ -1,7 +1,0 @@
-cryptography
-lief
-pefile
-psutil
-requests
-selenium>=4.0.0
-webdriver-manager[opera]
